@@ -7,6 +7,11 @@ X=np.array([1,0,0])
 Y=np.array([0,1,0])
 Z=np.array([0,0,1])
 
+def gauss(std): #sample gaussian distribution with standard deviation std
+    if std<=0:
+        return  0
+    return np.random.normal(0,std)
+
 class Soldier(object): #any soldier
 
     weapon=None #the static weapon class defining stats
@@ -35,14 +40,14 @@ class Soldier(object): #any soldier
 
     def shoot(self, target):
         distanceDeviation = np.power(np.linalg.norm(target.coords-self.coords),2) * self.distanceacc
-        dAcc = np.random.normal(0, distanceDeviation); #inaccuracy due to distance
+        dAcc = gauss(distanceDeviation); #inaccuracy due to distance
         dTheta = np.random.uniform(0, 2 * np.pi)
 
         recoilDeviation = -self.weapon.recoilSpread * np.power(self.weapon.recoilBase, self.recoil) + self.weapon.recoilSpread
 
-        mAcc = np.random.normal(0, self.weapon.inherentSpread * recoilDeviation); #inaccuracy due to mechanical details
+        mAcc = gauss(self.weapon.inherentSpread * recoilDeviation); #inaccuracy due to mechanical details
         mTheta = np.random.uniform(0, 2 * np.pi)
-        rAcc = np.random.normal(0, recoilDeviation)
+        rAcc = gauss(recoilDeviation)
         rTheta = np.random.uniform(0, 2 * np.pi)
 
         #now calculate the vectors
@@ -167,3 +172,9 @@ class Battlefield(object): #this is the operating are for all the soldiers
                n+=1
 
         return n
+
+def test():
+    s=Soldier((0,0,0),0)
+    b=Soldier((10,0,0),1)
+    s.weapon=Weapon
+    s.shoot(b)
