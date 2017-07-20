@@ -8,6 +8,8 @@ class Soldier(object): #any soldier
     weapon=None #the static weapon class defining stats
     size=np.array([]) #height,width
     health=1 #default 1 hp
+    distanceacc = .005 #inaccuracy due to distance
+    mechacc = .05 #inaccuracy due to weapon
 
     color=(0,0,0)
 
@@ -17,6 +19,14 @@ class Soldier(object): #any soldier
         self.faction=faction
 
         self.hp=self.health
+        self.recoil = 0
+
+    def findEnemy():
+
+    def shoot(target):
+        dAcc = np.random.normal(0, numpy.linalg.norm(target.coords-self.coords) * distanceacc);
+        mAcc = np.random.normal(0, )
+
 
 class DeadBody(object): #a dead body lying on the battlefield
 
@@ -40,7 +50,7 @@ class Weapon(object): #base weapon class..make it static
     fireRate=0 #Hz
     inherentSpread=0 #radians of spread from where you're aiming
     kickSpread=0 #radians of spread that results from rapid fire (added to inherent)
-    
+
     def getDamage(distance): #calculate damage based on the distance from the target
         return 0
 
@@ -78,12 +88,12 @@ class Battlefield(object): #this is the operating are for all the soldiers
 
 
     def __init__(self):
-        
+
         self.terrain=None #maybe later add a terrain for varrying gradients and travel speeds?
         self.soldiers=dict() #positional map of soldier positions
         self.dead=dict()  #positional map of dead bodies
 
-    
+
     def getIndex(self,coords): #get the positional map index by coords
         return tuple(coords[i]-coords[i]%params.gridSize for i in range(2))
 
@@ -97,10 +107,3 @@ class Battlefield(object): #this is the operating are for all the soldiers
                n+=1
 
         return n
-
-
-
-
-
-
-    
