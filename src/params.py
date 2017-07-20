@@ -1,4 +1,5 @@
 #this sets all the parameters for the battle
+import numpy as np
 
 #cool stuff you can edit
 bodySlowFactor=.2 #each body you have to climb/jump over slows you by this percent
@@ -16,7 +17,7 @@ def initClasses():
         inherentSpread=.01 #spread from the design of the gun
 
         def getDamage(distance): #damage based on how far away the target is... kill after 1 damage
-            return 1
+            return np
 
     global SEAL
     class SEAL(Soldier):

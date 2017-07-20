@@ -40,12 +40,29 @@ class Weapon(object): #base weapon class..make it static
     fireRate=0 #Hz
     inherentSpread=0 #spread from where you're aiming
     #kickSpread=0 #spread that results from rapid fire (added to inherent)
-    
-    def getDamage(distance): #calculate damage based on the distance from the target
-        return 0
 
-    def getMultiKill(distance): #if it can kill multiple people with one shot, define it here
-        return 1 #how many people it can kill at this distance
+    pointBlankDamage=0 #how much damage it does at 0 range (make this more than maxDamage..the greater it is, the further out the gun will deal max damage)
+    maxDamage=0 #damage when you're standing right in front of the gun
+    minDamage=0 #damage when the gun is beyond its max range... ie at terminal velocity
+    dropOff=0 #every x meters, the damage done by the gun is halved
+    multiKillDamage=0 #if it hits someone and deals at least this much damage, hit the next person and deal this much less damage
+
+    @classmethod
+    def getDamage(self,distance,multiKill=0): #get the damage dealt to a person when shot from a ceratain distance
+        d=self.pointBlankDamage*np.exp2(-distance/self.dropOff)+self.minDamage-multiKill
+        if d>self.maxDamage:
+            return self.maxDamage
+        return d
+
+    @classmethod
+    def shootAt(self,source,direction): #shoot from source (your soldier's coords) in direction (with recoil included)
+        pass
+
+    #def expDamage(maxDamage,dropOff,distance): #do damage that halves every dropOff, with maxDamage at a range of 0 meters
+    #    return maxDamage*np.exp2(-distance/dropOff)
+
+    #def getMultiKill(distance): #if it can kill multiple people with one shot, define it here
+    #    return 1 #how many people it can kill at this distance
 
 
 class Faction(object): #basically a number telling you which side you're on..not much to it
