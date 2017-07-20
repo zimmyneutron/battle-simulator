@@ -3,13 +3,18 @@
 import numpy as np
 import params
 
+X=np.array([1,0,0])
+Y=np.array([0,1,0])
+Z=np.array([0,0,1])
+
 class Soldier(object): #any soldier
 
     weapon=None #the static weapon class defining stats
     size=np.array([0,0],dtype=np.float) #height,width
     health=1 #default 1 hp
-    distanceacc = .005 #inaccuracy due to distance
-    maxrecoil = 1
+    distanceacc = .0005 #inaccuracy due to distance
+    maxRecoil = 10
+    #maxDeviation = 2
 
     color=(0,0,0)
 
@@ -21,20 +26,41 @@ class Soldier(object): #any soldier
         self.hp=self.health
         self.recoil = 0
 
-        self.
+    def update(self):
+        if(recoil != 0):
+            self.recoil -= 1
+
     def findEnemy():
+        pass
 
-    def shoot(target):
-        dAcc = np.random.normal(0, numpy.linalg.norm(target.coords-self.coords) * distanceacc); #inaccuracy due to distance
-        dTheta = np.random(0, 2 * np.pi)
-        mAcc = np.random.normal(0, weapon.inherentSpread * weapon.recoilDamp * recoil); #inaccuracy due to mechanical details
-        mTheta = np.random(0, 2 * np.pi)
+    def shoot(self, target):
+        distanceDeviation = np.power(np.linalg.norm(target.coords-self.coords),2) * self.distanceacc
+        dAcc = np.random.normal(0, distanceDeviation); #inaccuracy due to distance
+        dTheta = np.random.uniform(0, 2 * np.pi)
 
+        recoilDeviation = -self.weapon.recoilSpread * np.power(self.weapon.recoilBase, self.recoil) + self.weapon.recoilSpread
 
-        rAcc = np.random.normal(0, recoil)
-        rTheta = np.random(0, 2 * np.pi)
+        mAcc = np.random.normal(0, self.weapon.inherentSpread * recoilDeviation); #inaccuracy due to mechanical details
+        mTheta = np.random.uniform(0, 2 * np.pi)
+        rAcc = np.random.normal(0, recoilDeviation)
+        rTheta = np.random.uniform(0, 2 * np.pi)
 
-        weapon.shootAt(self, target, vector)
+        #now calculate the vectors
+
+        displacementVector = target.coords - self.coords
+        initialUnitVector = displacementVector / np.linalg.norm(displacementVector)
+
+        azimuth=np.arctan2(initialUnitVector[1],initialUnitVector[0])+np.pi/2 #the x,y angle of the initialUnitVector vector
+        refX=np.array([X[0]*np.cos(azimuth)-X[1]*np.sin(azimuth),X[0]*np.sin(azimuth)+X[1]*np.cos(azimuth),0]) #the x axis rotated along the initialUnitVectoration
+        refY=np.cross(initialUnitVector,refX) #the y axis rotated up to the initialUnitVectoration
+
+        aimVector += dAcc*(np.cos(dTheta)*refX+np.sin(dTheta)*refY) + mAcc*(np.cos(mTheta)*refX+np.sin(mTheta)*refY) + rAcc*(np.cos(rTheta)*refX+np.sin(rTheta)*refY)
+        aimUnitVector = aimVector / np.linalg.norm(aimVector)
+
+        self.weapon.shootAt(self.coords, aimUnitVector)
+        self.recoil += 2
+        if(recoil > maxRecoil):
+            recoil = maxRecoil
 
 class DeadBody(object): #a dead body lying on the battlefield
 
