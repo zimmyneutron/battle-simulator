@@ -27,7 +27,7 @@ class Soldier(object): #any soldier
         self.recoil = 0
 
     def update(self):
-        if(recoil != 0):
+        if(self.recoil != 0):
             self.recoil -= 1
 
     def findEnemy():
@@ -54,13 +54,13 @@ class Soldier(object): #any soldier
         refX=np.array([X[0]*np.cos(azimuth)-X[1]*np.sin(azimuth),X[0]*np.sin(azimuth)+X[1]*np.cos(azimuth),0]) #the x axis rotated along the initialUnitVectoration
         refY=np.cross(initialUnitVector,refX) #the y axis rotated up to the initialUnitVectoration
 
-        aimVector += dAcc*(np.cos(dTheta)*refX+np.sin(dTheta)*refY) + mAcc*(np.cos(mTheta)*refX+np.sin(mTheta)*refY) + rAcc*(np.cos(rTheta)*refX+np.sin(rTheta)*refY)
+        aimVector = dAcc*(np.cos(dTheta)*refX+np.sin(dTheta)*refY) + mAcc*(np.cos(mTheta)*refX+np.sin(mTheta)*refY) + rAcc*(np.cos(rTheta)*refX+np.sin(rTheta)*refY)
         aimUnitVector = aimVector / np.linalg.norm(aimVector)
-
+        print(aimUnitVector)
         self.weapon.shootAt(self.coords, aimUnitVector)
         self.recoil += 2
-        if(recoil > maxRecoil):
-            recoil = maxRecoil
+        if(self.recoil > self.maxRecoil):
+            self.recoil = self.maxRecoil
 
 class DeadBody(object): #a dead body lying on the battlefield
 
@@ -105,7 +105,7 @@ class Weapon(object): #base weapon class..make it static
     def shootAt(self,source,direction): #shoot from source (your soldier's coords) in direction (with recoil included)
         flatTrajectory=direction[:2] #direction is 3d, but this is the trajectory along the flat map (no z component)
 
-        
+
 
     #def expDamage(maxDamage,dropOff,distance): #do damage that halves every dropOff, with maxDamage at a range of 0 meters
     #    return maxDamage*np.exp2(-distance/dropOff)
