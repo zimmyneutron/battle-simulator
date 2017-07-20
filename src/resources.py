@@ -56,14 +56,12 @@ class DeadBody(object): #a dead body lying on the battlefield
 class Weapon(object): #base weapon class..make it static
 
     fireRate=0 #Hz
-    inherentSpread=0 #radians of spread from where you're aiming
-    kickSpread=0 #radians of spread that results from rapid fire (added to inherent)
-
     inherentSpread=0 #spread from where you're aiming
-    #kickSpread=0 #spread that results from rapid fire (added to inherent)
-    def getDamage(distance): #calculate damage based on the distance from the target
-        return 0
+    distanceSpread=0 #spread as a function of distnace squared (should be very small... ie 10e-7
+    recoilSpread=0 #the maximum recoil attained by a gun as you fire endlessly
+    recoilBase=.5 #how quickly the gun reaches its maximum recoil
 
+    #damage stuff
     pointBlankDamage=0 #how much damage it does at 0 range (make this more than maxDamage..the greater it is, the further out the gun will deal max damage)
     maxDamage=0 #damage when you're standing right in front of the gun
     minDamage=0 #damage when the gun is beyond its max range... ie at terminal velocity
@@ -79,7 +77,9 @@ class Weapon(object): #base weapon class..make it static
 
     @classmethod
     def shootAt(self,source,direction): #shoot from source (your soldier's coords) in direction (with recoil included)
-        pass
+        flatTrajectory=direction[:2] #direction is 3d, but this is the trajectory along the flat map (no z component)
+
+        
 
     #def expDamage(maxDamage,dropOff,distance): #do damage that halves every dropOff, with maxDamage at a range of 0 meters
     #    return maxDamage*np.exp2(-distance/dropOff)
@@ -116,6 +116,7 @@ class Faction(object): #basically a number telling you which side you're on..not
 
 class Battlefield(object): #this is the operating are for all the soldiers
 
+    size=((-2000,2000),(-2000,2000)) #
 
     def __init__(self):
 
