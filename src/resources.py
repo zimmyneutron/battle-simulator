@@ -54,7 +54,7 @@ class Soldier(object): #any soldier
         refX=np.array([X[0]*np.cos(azimuth)-X[1]*np.sin(azimuth),X[0]*np.sin(azimuth)+X[1]*np.cos(azimuth),0]) #the x axis rotated along the initialUnitVectoration
         refY=np.cross(initialUnitVector,refX) #the y axis rotated up to the initialUnitVectoration
 
-        aimVector = dAcc*(np.cos(dTheta)*refX+np.sin(dTheta)*refY) + mAcc*(np.cos(mTheta)*refX+np.sin(mTheta)*refY) + rAcc*(np.cos(rTheta)*refX+np.sin(rTheta)*refY)
+        aimVector = initialUnitVector + dAcc*(np.cos(dTheta)*refX+np.sin(dTheta)*refY) + mAcc*(np.cos(mTheta)*refX+np.sin(mTheta)*refY) + rAcc*(np.cos(rTheta)*refX+np.sin(rTheta)*refY)
         aimUnitVector = aimVector / np.linalg.norm(aimVector)
         print(aimUnitVector)
         self.weapon.shootAt(self.coords, aimUnitVector)
