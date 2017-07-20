@@ -9,7 +9,7 @@ class Soldier(object): #any soldier
     size=np.array([0,0],dtype=np.float) #height,width
     health=1 #default 1 hp
     distanceacc = .005 #inaccuracy due to distance
-    mechacc = .05 #inaccuracy due to weapon
+    maxrecoil = 1
 
     color=(0,0,0)
 
@@ -21,12 +21,20 @@ class Soldier(object): #any soldier
         self.hp=self.health
         self.recoil = 0
 
+        self.
     def findEnemy():
 
     def shoot(target):
-        dAcc = np.random.normal(0, numpy.linalg.norm(target.coords-self.coords) * distanceacc);
-        mAcc = np.random.normal(0, )
+        dAcc = np.random.normal(0, numpy.linalg.norm(target.coords-self.coords) * distanceacc); #inaccuracy due to distance
+        dTheta = np.random(0, 2 * np.pi)
+        mAcc = np.random.normal(0, weapon.inherentSpread * weapon.recoilDamp * recoil); #inaccuracy due to mechanical details
+        mTheta = np.random(0, 2 * np.pi)
 
+
+        rAcc = np.random.normal(0, recoil)
+        rTheta = np.random(0, 2 * np.pi)
+
+        weapon.shootAt(self, target, vector)
 
 class DeadBody(object): #a dead body lying on the battlefield
 
@@ -53,7 +61,7 @@ class Weapon(object): #base weapon class..make it static
 
     inherentSpread=0 #spread from where you're aiming
     #kickSpread=0 #spread that results from rapid fire (added to inherent)
-    
+
     def getDamage(distance): #calculate damage based on the distance from the target
         return 0
 
