@@ -17,7 +17,7 @@ class Soldier(object): #any soldier
     weapon=None #the static weapon class defining stats
     size=np.array([0,0],dtype=np.float) #height,width
     health=1 #default 1 hp
-    distanceacc = .0005 #inaccuracy due to distance
+    distanceacc = 1e-4 #inaccuracy due to distance
     maxRecoil = 10
     #maxDeviation = 2
 
@@ -39,7 +39,7 @@ class Soldier(object): #any soldier
         pass
 
     def shoot(self, target):
-        distanceDeviation = np.power(np.linalg.norm(target.coords-self.coords),2) * self.distanceacc
+        distanceDeviation = np.power(np.linalg.norm(target.coords-self.coords),1) * self.distanceacc
         dAcc = gauss(distanceDeviation); #inaccuracy due to distance
         dTheta = np.random.uniform(0, 2 * np.pi)
 
