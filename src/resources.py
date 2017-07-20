@@ -6,7 +6,7 @@ import params
 class Soldier(object): #any soldier
 
     weapon=None #the static weapon class defining stats
-    size=np.array([]) #height,width
+    size=np.array([0,0],dtype=np.float) #height,width
     health=1 #default 1 hp
     distanceacc = .005 #inaccuracy due to distance
     mechacc = .05 #inaccuracy due to weapon
@@ -51,6 +51,9 @@ class Weapon(object): #base weapon class..make it static
     inherentSpread=0 #radians of spread from where you're aiming
     kickSpread=0 #radians of spread that results from rapid fire (added to inherent)
 
+    inherentSpread=0 #spread from where you're aiming
+    #kickSpread=0 #spread that results from rapid fire (added to inherent)
+    
     def getDamage(distance): #calculate damage based on the distance from the target
         return 0
 
@@ -90,8 +93,11 @@ class Battlefield(object): #this is the operating are for all the soldiers
     def __init__(self):
 
         self.terrain=None #maybe later add a terrain for varrying gradients and travel speeds?
-        self.soldiers=dict() #positional map of soldier positions
-        self.dead=dict()  #positional map of dead bodies
+
+        self.soldiersList=list() #list of the soldiers for looping
+        self.deadList=list() #list of bodies for looping
+        self.soldiersMap=dict() #positional map of soldier positions
+        self.deadMap=dict()  #positional map of dead bodies
 
 
     def getIndex(self,coords): #get the positional map index by coords
