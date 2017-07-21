@@ -52,7 +52,7 @@ class Soldier(object): #any soldier
 
         #now calculate the vectors
 
-        displacementVector = target.coords - self.coords
+        displacementVector = (target.coords + target.weapon.height) - (self.coords + self.weapon.height) #initial aim vector
         initialUnitVector = displacementVector / np.linalg.norm(displacementVector)
 
         azimuth=np.arctan2(initialUnitVector[1],initialUnitVector[0])+np.pi/2 #the x,y angle of the initialUnitVector vector
@@ -62,7 +62,7 @@ class Soldier(object): #any soldier
         aimVector = initialUnitVector + dAcc*(np.cos(dTheta)*refX+np.sin(dTheta)*refY) + mAcc*(np.cos(mTheta)*refX+np.sin(mTheta)*refY) + rAcc*(np.cos(rTheta)*refX+np.sin(rTheta)*refY)
         aimUnitVector = aimVector / np.linalg.norm(aimVector)
         print(aimUnitVector)
-        self.weapon.shootAt(self.coords, aimUnitVector)
+        self.weapon.shootAt(self.coords + self.weapon.height, aimUnitVector)
         self.recoil += 2
         if(self.recoil > self.maxRecoil):
             self.recoil = self.maxRecoil
