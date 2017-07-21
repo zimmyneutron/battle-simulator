@@ -52,7 +52,7 @@ class Soldier(object): #any soldier
 
         #now calculate the vectors
 
-        displacementVector = target.coords - self.coords
+        displacementVector = (target.coords + target.weapon.height) - (self.coords + self.weapon.height) #initial aim vector
         initialUnitVector = displacementVector / np.linalg.norm(displacementVector)
 
         azimuth=np.arctan2(initialUnitVector[1],initialUnitVector[0])+np.pi/2 #the x,y angle of the initialUnitVector vector
@@ -61,8 +61,10 @@ class Soldier(object): #any soldier
 
         aimVector = initialUnitVector + dAcc*(np.cos(dTheta)*refX+np.sin(dTheta)*refY) + mAcc*(np.cos(mTheta)*refX+np.sin(mTheta)*refY) + rAcc*(np.cos(rTheta)*refX+np.sin(rTheta)*refY)
         aimUnitVector = aimVector / np.linalg.norm(aimVector)
+
         #print(aimUnitVector)
-        self.weapon.shootAt(self.coords, aimUnitVector, self.faction) #also pass in your faction so you don't shoot an ally (or yourself)
+        self.weapon.shootAt(self.coords + self.weapon.height, aimUnitVector, self.faction) #also pass in your faction so you don't shoot an ally (or yourself)
+
         self.recoil += 2
         if(self.recoil > self.maxRecoil):
             self.recoil = self.maxRecoil
@@ -96,15 +98,15 @@ class Weapon(object): #base weapon class..make it static
     fireRate=0 #Hz
     height=np.array((0,0,0)) #how high above the ground the gun is held
     
+
     inherentSpread=0 #spread from where you're aiming
-    distanceSpread=0 #spread as a function of distnace squared (should be very small... ie 10e-7
     recoilSpread=0 #the maximum recoil attained by a gun as you fire endlessly
     recoilBase=.5 #how quickly the gun reaches its maximum recoil
 
     #maxDistance=1800 #don't check anything beyond this distance
 
     #damage stuff
-    pointBlankDamage=0 #how much damage it does at 0 range (make this more than maxDamage..the greater it is, the further out the gun will deal max damage)
+    falloffBuffer=0 #this determines how long bullet will go before starting falloff
     maxDamage=0 #damage when you're standing right in front of the gun
     minDamage=0 #damage when the gun is beyond its max range... ie at terminal velocity
     dropOff=0 #every x meters, the damage done by the gun is halved
@@ -129,14 +131,14 @@ class Weapon(object): #base weapon class..make it static
         flatTrajectory=direction[:2] #direction is 3d, but this is the trajectory along the flat map (no z component)
         start=source#+np.array([0,0,self.height]) #start at their feet plus the weapon height
 
-        #split up the hashes between x2-x1 and y2-y1 
+        #split up the hashes between x2-x1 and y2-y1
         hashes=set() #each t value for which the bullet passes into a new grid box
-        
+
         for i in range(2):
             m=(direction[i])#*params.maxBulletDistance/params.gridSize)
-            for coord in range(Battlefield.gridify(start[i]),Battlefield.gridify(start[i]+direction[i]*params.maxBulletDistance),params.gridSize): 
+            for coord in range(Battlefield.gridify(start[i]),Battlefield.gridify(start[i]+direction[i]*params.maxBulletDistance),params.gridSize):
                 hashes.add((coord-start[i])/m )
-                
+
         hashes=list(hashes)
         hashes.sort()
 
@@ -169,9 +171,8 @@ class Weapon(object): #base weapon class..make it static
                                 multiKill+=self.multiKillDamage
                             else:
                                 return None #exit the loop if it can't hit another person
-                            
-                            
-            
+
+
 
     #def expDamage(maxDamage,dropOff,distance): #do damage that halves every dropOff, with maxDamage at a range of 0 meters
     #    return maxDamage*np.exp2(-distance/dropOff)
