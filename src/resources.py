@@ -15,10 +15,10 @@ def gauss(std): #sample gaussian distribution with standard deviation std
 class Soldier(object): #any soldier
 
     weapon=None #the static weapon class defining stats
-    size=np.array([0,0],dtype=np.float) #radius, height 
+    size=np.array([.25,1.5],dtype=np.float) #radius, height
     health=1 #default 1 hp
-    distanceacc = 1e-4 #inaccuracy due to distance
-    maxRecoil = 10
+    distanceacc = 1e-5 #inaccuracy due to distance
+    maxRecoil = 20
     #maxDeviation = 2
 
     color=(0,0,0)
@@ -26,10 +26,13 @@ class Soldier(object): #any soldier
     def __init__(self,coords,faction):
 
         self.coords=np.array(coords)
-        self.faction=faction
+        self.faction=faction #make sure this is a Faction class, not an int ID number
+
+        Battlefield.main.addSoldier(self)
 
         self.hp=self.health
         self.recoil = 0
+        self.timesHit=0
 
     def update(self):
         if(self.recoil != 0):
@@ -45,7 +48,7 @@ class Soldier(object): #any soldier
 
         recoilDeviation = -self.weapon.recoilSpread * np.power(self.weapon.recoilBase, self.recoil) + self.weapon.recoilSpread
 
-        mAcc = gauss(self.weapon.inherentSpread * recoilDeviation); #inaccuracy due to mechanical details
+        mAcc = gauss(self.weapon.inherentSpread); #inaccuracy due to mechanical details
         mTheta = np.random.uniform(0, 2 * np.pi)
         rAcc = gauss(recoilDeviation)
         rTheta = np.random.uniform(0, 2 * np.pi)
@@ -75,6 +78,9 @@ class Soldier(object): #any soldier
     def damage(self,d): #deal damage to the soldier (ignore if negative)
         if d>0:
             self.hp-=d
+            #print("I used to be an adventurer like you until I took an arrow to the knee")
+            #print(d)
+            self.timesHit+=1
 
 class DeadBody(object): #a dead body lying on the battlefield
 
@@ -96,32 +102,32 @@ class DeadBody(object): #a dead body lying on the battlefield
 class Weapon(object): #base weapon class..make it static
 
     fireRate=0 #Hz
-    height=np.array((0,0,0)) #how high above the ground the gun is held
-    
+    height=np.array((0,0,.7)) #how high above the ground the gun is held
 
-    inherentSpread=0 #spread from where you're aiming
-    recoilSpread=0 #the maximum recoil attained by a gun as you fire endlessly
+
+    inherentSpread=0.002 #spread from where you're aiming
+    recoilSpread=.005 #the maximum recoil attained by a gun as you fire endlessly
     recoilBase=.5 #how quickly the gun reaches its maximum recoil
 
     #maxDistance=1800 #don't check anything beyond this distance
 
     #damage stuff
-    falloffBuffer=0 #this determines how long bullet will go before starting falloff
-    maxDamage=0 #damage when you're standing right in front of the gun
-    minDamage=0 #damage when the gun is beyond its max range... ie at terminal velocity
-    dropOff=0 #every x meters, the damage done by the gun is halved
-    multiKillDamage=0 #if it hits someone and deals at least this much damage, hit the next person and deal this much less damage
-                        #quick side note: if multiKillDamage is 0, the bullet will hit every single person in a line 
+    falloffBuffer=.5 #this determines how long bullet will go before starting falloff
+    maxDamage=.3 #damage when you're standing right in front of the gun
+    minDamage=.15 #damage when the gun is beyond its max range... ie at terminal velocity
+    dropOff=500 #every x meters, the damage done by the gun is halved
+    multiKillDamage=.05 #if it hits someone and deals at least this much damage, hit the next person and deal this much less damage
+                        #quick side note: if multiKillDamage is 0, the bullet will hit every single person in a line
 
     @classmethod
     def getDamage(self,distance,multiKill=0): #get the damage dealt to a person when shot from a ceratain distance
-        d=self.pointBlankDamage*np.exp2(-distance/self.dropOff)#+self.minDamage-multiKill
+        d=self.falloffBuffer*np.exp2(-distance/self.dropOff)#+self.minDamage-multiKill
         if d<self.minDamage:
             d=self.minDamage
         #d-=multiKill #if activated here, this will ALLOW massive collats at close range
         if d>self.maxDamage:
-            return self.maxDamage
-        d-=multiKill #if activated here, this will PREVENT massive close range collats 
+            d= self.maxDamage
+        d-=multiKill #if activated here, this will PREVENT massive close range collats
         return d
 
     @classmethod
@@ -132,23 +138,37 @@ class Weapon(object): #base weapon class..make it static
         start=source#+np.array([0,0,self.height]) #start at their feet plus the weapon height
 
         #split up the hashes between x2-x1 and y2-y1
-        hashes=set() #each t value for which the bullet passes into a new grid box
-
+        hashes=[] #each t value for which the bullet passes into a new grid box
+        grids=set()
         for i in range(2):
             m=(direction[i])#*params.maxBulletDistance/params.gridSize)
             for coord in range(Battlefield.gridify(start[i]),Battlefield.gridify(start[i]+direction[i]*params.maxBulletDistance),params.gridSize):
-                hashes.add((coord-start[i])/m )
+                fooIndex=Battlefield.getIndex(start+direction*(coord-start[i])/m)
+                if not grids.__contains__(fooIndex):
+                    hashes.append((coord-start[i])/m )
+                    grids.add(fooIndex)
 
-        hashes=list(hashes)
         hashes.sort()
+        '''
+        i=0
+        while i<len(hashes)-1:
+            if Battlefield.getIndex(start+direction*hashes[i])==Battlefield.getIndex(start+direction*hashes[i+1]):
+                hashes.pop(i+1)
+            i+=1
+            '''
 
-        #now duplicate the starting and ending spots 
-        if hashes[0]!=hashes[1]: #don't double count the first one
-            hashes.insert(0,hashes[0])
+
+        if hashes[0]==hashes[1]: #don't double count the first one
+            hashes.pop(0)
+
+        #for i in hashes:print(Battlefield.getIndex(start+direction*i))
 
 
         multiKill=0 #track the number of people hit
         for t in hashes: #now visit each grid
+
+            #t+=1e-5 #ensure it's inside the block
+
             z=start[2]+direction[2]*t #the z height upon entering this block
             if not (params.minBulletHeight<=z<=params.maxBulletHeight) and t!= hashes[0]: #dont check backwards
                 break #exit the loop, forget the bullet
@@ -156,14 +176,15 @@ class Weapon(object): #base weapon class..make it static
             #else check for collisions inside the grid box
             gridBox=Battlefield.main.soldiersMap.get(Battlefield.main.getIndex(start+direction*t))
             if gridBox: #if it's occupied
-                gridBox.sort(key=lambda soldier: np.linalg.norm(soldier.coords-start)) #sort the list from closest to furthest 
+                gridBox.sort(key=lambda soldier: np.linalg.norm(soldier.coords-start)) #sort the list from closest to furthest
                 for s in gridBox: #for each soldier inside
                     if faction.isEnemySoldier(s): #don't shoot an ally or yourself
-                        displacelent=s.coords-start
+                        displacement=s.coords-start
                         displacementDotDirection=np.dot(displacement,direction)
                         offsetVector=direction-displacementDotDirection/np.dot(displacement,displacement)*displacement #this is the shortest distance between the direction and displacement vectors
                         offset3d=offsetVector/np.linalg.norm(offsetVector)*np.linalg.norm(displacement)**2*np.linalg.norm(offsetVector)/displacementDotDirection #the 3d offset relative to soldier's feet
                         offset2d=(np.sqrt(offset3d[0]**2+offset3d[1]**2),offset3d[2])#the 2d offset of radius, height instead of x y z
+                        #print(offset2d)
                         if s.inHitbox(offset2d): #if it hits the soldier
                             damage=self.getDamage(np.linalg.norm(s.coords-start),multiKill) #calculate the damage, based on how many targets have already been hit by bullet
                             s.damage(damage) #deal damage to the soldier
@@ -242,8 +263,58 @@ class Battlefield(object): #this is the operating are for all the soldiers
 
         return n
 
+    def addSoldierToMap(self,index,soldier): #add a soldier to the solder map grid
+        if self.soldiersMap.get(index) is None:
+            self.soldiersMap[index]=[soldier]
+        else:
+            self.soldiersMap[index].append(soldier)
+
+    def removeSoldierFromMap(self,index,soldier): #remove the soldier from the square, and if empty, deallocate it
+        if self.soldiersMap.get(index) is not None:
+            sindex=self.soldiersMap[index].index(soldier)
+            if sindex!=-1:
+                self.soldiersMap[index].pop(sindex)
+
+            if len(self.soldiersMap[index]==0): #remove the list from memory if it's empty
+                self.solderisMap[index]=None
+
+    def addSoldier(self,soldier): #add a new soldier to the battlefield
+        self.soldiersList.append(soldier)
+        self.addSoldierToMap(self.getIndex(soldier.coords),soldier)
+
+    def removeSoldier(self,soldier): #remove the soldier when they distance
+        sindex=self.soldiersList.index(soldier)
+        if sindex!=-1:
+            self.soldiersList.pop(sindex)
+        self.removeSoldierFromMap(self.getIndex(soldier.coords),soldier)
+
+class SEALFACTION(Faction):
+    id=0
+
+    enemy=[1]
+
+class BRITFACTION(Faction):
+    id=1
+
+    enemy=[0]
+
 def test():
-    s=Soldier((0,0,0),0)
-    b=Soldier((10,0,0),1)
+    Battlefield()
+    s=Soldier((0,0,0),SEALFACTION)
+    b=Soldier((40,40.2,0),BRITFACTION)
+    b2=Soldier((80,80.4,0),BRITFACTION)
     s.weapon=Weapon
-    s.shoot(b)
+    b.weapon=Weapon
+    for i in range(1000):
+        s.shoot(b)
+        s.update()
+    print("TOTAL HITS:",b.timesHit)
+    print("collats:",b2.timesHit)
+    b.timesHit=0
+    print("Now single tapping")
+    for i in range(1):
+        if(i % 2 == 0):
+            s.shoot(b)
+        s.update()
+    print("TOTAL HITS:",b.timesHit)
+test()
