@@ -15,7 +15,7 @@ def gauss(std): #sample gaussian distribution with standard deviation std
 class Soldier(object): #any soldier
 
     weapon=None #the static weapon class defining stats
-    size=np.array([0,0],dtype=np.float) #height,width
+    size=np.array([0,0],dtype=np.float) #radius, height 
     health=1 #default 1 hp
     distanceacc = 1e-4 #inaccuracy due to distance
     maxRecoil = 10
@@ -61,11 +61,18 @@ class Soldier(object): #any soldier
 
         aimVector = initialUnitVector + dAcc*(np.cos(dTheta)*refX+np.sin(dTheta)*refY) + mAcc*(np.cos(mTheta)*refX+np.sin(mTheta)*refY) + rAcc*(np.cos(rTheta)*refX+np.sin(rTheta)*refY)
         aimUnitVector = aimVector / np.linalg.norm(aimVector)
-        print(aimUnitVector)
-        self.weapon.shootAt(self.coords, aimUnitVector)
+        #print(aimUnitVector)
+        self.weapon.shootAt(self.coords, aimUnitVector, self.faction) #also pass in your faction so you don't shoot an ally (or yourself)
         self.recoil += 2
         if(self.recoil > self.maxRecoil):
             self.recoil = self.maxRecoil
+
+    def inHitbox(self,offset2d): #check whether the 2d offset vector is inside your hitbox or not
+        return offset2d[0]<=self.size[0] and offset2d[1]<=self.size[1] #that's all it should take because we're checking radius, not displacement
+
+    def damage(self,d): #deal damage to the soldier (ignore if negative)
+        if d>0:
+            self.hp-=d
 
 class DeadBody(object): #a dead body lying on the battlefield
 
@@ -87,7 +94,7 @@ class DeadBody(object): #a dead body lying on the battlefield
 class Weapon(object): #base weapon class..make it static
 
     fireRate=0 #Hz
-    height=0 #how high above the ground the gun is held
+    height=np.array((0,0,0)) #how high above the ground the gun is held
     
     inherentSpread=0 #spread from where you're aiming
     distanceSpread=0 #spread as a function of distnace squared (should be very small... ie 10e-7
@@ -102,20 +109,25 @@ class Weapon(object): #base weapon class..make it static
     minDamage=0 #damage when the gun is beyond its max range... ie at terminal velocity
     dropOff=0 #every x meters, the damage done by the gun is halved
     multiKillDamage=0 #if it hits someone and deals at least this much damage, hit the next person and deal this much less damage
+                        #quick side note: if multiKillDamage is 0, the bullet will hit every single person in a line 
 
     @classmethod
     def getDamage(self,distance,multiKill=0): #get the damage dealt to a person when shot from a ceratain distance
-        d=self.pointBlankDamage*np.exp2(-distance/self.dropOff)+self.minDamage-multiKill
+        d=self.pointBlankDamage*np.exp2(-distance/self.dropOff)#+self.minDamage-multiKill
+        if d<self.minDamage:
+            d=self.minDamage
+        #d-=multiKill #if activated here, this will ALLOW massive collats at close range
         if d>self.maxDamage:
             return self.maxDamage
+        d-=multiKill #if activated here, this will PREVENT massive close range collats 
         return d
 
     @classmethod
-    def shootAt(self,source,direction): #shoot from source (your soldier's coords) in direction (with recoil included)
+    def shootAt(self,source,direction,faction): #shoot from source (your soldier's coords) in direction (with recoil included)
 
         #first loop through the grid and if it's occupied, check the soldiers inside
         flatTrajectory=direction[:2] #direction is 3d, but this is the trajectory along the flat map (no z component)
-        start=source+np.array([0,0,self.height]) #start at their feet plus the weapon height
+        start=source#+np.array([0,0,self.height]) #start at their feet plus the weapon height
 
         #split up the hashes between x2-x1 and y2-y1 
         hashes=set() #each t value for which the bullet passes into a new grid box
@@ -127,10 +139,39 @@ class Weapon(object): #base weapon class..make it static
                 
         hashes=list(hashes)
         hashes.sort()
-        print(hashes)        
+
+        #now duplicate the starting and ending spots 
+        if hashes[0]!=hashes[1]: #don't double count the first one
+            hashes.insert(0,hashes[0])
+
+
+        multiKill=0 #track the number of people hit
+        for t in hashes: #now visit each grid
+            z=start[2]+direction[2]*t #the z height upon entering this block
+            if not (params.minBulletHeight<=z<=params.maxBulletHeight) and t!= hashes[0]: #dont check backwards
+                break #exit the loop, forget the bullet
+
+            #else check for collisions inside the grid box
+            gridBox=Battlefield.main.soldiersMap.get(Battlefield.main.getIndex(start+direction*t))
+            if gridBox: #if it's occupied
+                gridBox.sort(key=lambda soldier: np.linalg.norm(soldier.coords-start)) #sort the list from closest to furthest 
+                for s in gridBox: #for each soldier inside
+                    if faction.isEnemySoldier(s): #don't shoot an ally or yourself
+                        displacelent=s.coords-start
+                        displacementDotDirection=np.dot(displacement,direction)
+                        offsetVector=direction-displacementDotDirection/np.dot(displacement,displacement)*displacement #this is the shortest distance between the direction and displacement vectors
+                        offset3d=offsetVector/np.linalg.norm(offsetVector)*np.linalg.norm(displacement)**2*np.linalg.norm(offsetVector)/displacementDotDirection #the 3d offset relative to soldier's feet
+                        offset2d=(np.sqrt(offset3d[0]**2+offset3d[1]**2),offset3d[2])#the 2d offset of radius, height instead of x y z
+                        if s.inHitbox(offset2d): #if it hits the soldier
+                            damage=self.getDamage(np.linalg.norm(s.coords-start),multiKill) #calculate the damage, based on how many targets have already been hit by bullet
+                            s.damage(damage) #deal damage to the soldier
+                            if damage>self.multiKillDamage: #if it deals enough damage to hit another person
+                                multiKill+=self.multiKillDamage
+                            else:
+                                return None #exit the loop if it can't hit another person
+                            
+                            
             
-            
-           
 
     #def expDamage(maxDamage,dropOff,distance): #do damage that halves every dropOff, with maxDamage at a range of 0 meters
     #    return maxDamage*np.exp2(-distance/dropOff)
@@ -168,6 +209,7 @@ class Faction(object): #basically a number telling you which side you're on..not
 class Battlefield(object): #this is the operating are for all the soldiers
 
     size=((-2000,2000),(-2000,2000)) #bounds of the battlefield
+    main=None #the battlefield reference
 
     def __init__(self):
 
@@ -177,6 +219,8 @@ class Battlefield(object): #this is the operating are for all the soldiers
         self.deadList=list() #list of bodies for looping
         self.soldiersMap=dict() #positional map of soldier positions
         self.deadMap=dict()  #positional map of dead bodies
+
+        self.__class__.main=self
 
     @classmethod
     def getIndex(self,coords): #get the positional map index by coords
