@@ -2,6 +2,12 @@
 
 import numpy as np
 import params
+import pygame #for graphics
+import os
+
+import random
+
+pygame.init()
 
 X=np.array([1,0,0])
 Y=np.array([0,1,0])
@@ -21,7 +27,7 @@ class Soldier(object): #any soldier
     maxRecoil = 20
     #maxDeviation = 2
 
-    color=(0,0,0)
+    color=(0,0,0,0) #rgba
 
     def __init__(self,coords,faction):
 
@@ -87,7 +93,7 @@ class DeadBody(object): #a dead body lying on the battlefield
     radius=0 #if you're within this radius of the body, you have to slow down to avoid it
     slowFactor=params.bodySlowFactor #for each body you have to jump over, you lose this much speed
 
-    color=(0,0,0)
+    color=(0,0,0,0)
 
     def __init__(self,coords):
         self.coords=np.array(coords)
@@ -102,21 +108,21 @@ class DeadBody(object): #a dead body lying on the battlefield
 class Weapon(object): #base weapon class..make it static
 
     fireRate=0 #Hz
-    height=np.array((0,0,.7)) #how high above the ground the gun is held
+    height=np.array((0,0,0.)) #how high above the ground the gun is held
 
 
-    inherentSpread=0.002 #spread from where you're aiming
-    recoilSpread=.005 #the maximum recoil attained by a gun as you fire endlessly
+    inherentSpread=0 #spread from where you're aiming
+    recoilSpread=0 #the maximum recoil attained by a gun as you fire endlessly
     recoilBase=.5 #how quickly the gun reaches its maximum recoil
 
-    #maxDistance=1800 #don't check anything beyond this distance
+    maxRange=0 #don't try to shoot beyond this range
 
     #damage stuff
-    falloffBuffer=.5 #this determines how long bullet will go before starting falloff
-    maxDamage=.3 #damage when you're standing right in front of the gun
-    minDamage=.15 #damage when the gun is beyond its max range... ie at terminal velocity
-    dropOff=500 #every x meters, the damage done by the gun is halved
-    multiKillDamage=.05 #if it hits someone and deals at least this much damage, hit the next person and deal this much less damage
+    falloffBuffer=0 #this determines how long bullet will go before starting falloff
+    maxDamage=0 #damage when you're standing right in front of the gun
+    minDamage=0 #damage when the gun is beyond its max range... ie at terminal velocity
+    dropOff=0 #every x meters, the damage done by the gun is halved
+    multiKillDamage=0 #if it hits someone and deals at least this much damage, hit the next person and deal this much less damage
                         #quick side note: if multiKillDamage is 0, the bullet will hit every single person in a line
 
     @classmethod
@@ -130,6 +136,13 @@ class Weapon(object): #base weapon class..make it static
         d-=multiKill #if activated here, this will PREVENT massive close range collats
         return d
 
+    @staticmethod
+    def getSign(direction): #decide whether to multiply by negative 1 or not
+        if direction>0:
+            return 1
+        else:
+            return -1
+
     @classmethod
     def shootAt(self,source,direction,faction): #shoot from source (your soldier's coords) in direction (with recoil included)
 
@@ -142,7 +155,8 @@ class Weapon(object): #base weapon class..make it static
         grids=set()
         for i in range(2):
             m=(direction[i])#*params.maxBulletDistance/params.gridSize)
-            for coord in range(Battlefield.gridify(start[i]),Battlefield.gridify(start[i]+direction[i]*params.maxBulletDistance),params.gridSize):
+            for coord in range(Battlefield.gridify(start[i]),Battlefield.gridify(start[i]+direction[i]*params.maxBulletDistance),
+                               self.getSign(m)*params.gridSize):
                 fooIndex=Battlefield.getIndex(start+direction*(coord-start[i])/m)
                 if not grids.__contains__(fooIndex):
                     hashes.append((coord-start[i])/m )
@@ -167,7 +181,7 @@ class Weapon(object): #base weapon class..make it static
         multiKill=0 #track the number of people hit
         for t in hashes: #now visit each grid
 
-            #t+=1e-5 #ensure it's inside the block
+            t+=1e-5 #ensure it's inside the block
 
             z=start[2]+direction[2]*t #the z height upon entering this block
             if not (params.minBulletHeight<=z<=params.maxBulletHeight) and t!= hashes[0]: #dont check backwards
@@ -230,7 +244,7 @@ class Faction(object): #basically a number telling you which side you're on..not
 
 class Battlefield(object): #this is the operating are for all the soldiers
 
-    size=((-2000,2000),(-2000,2000)) #bounds of the battlefield
+    
     main=None #the battlefield reference
 
     def __init__(self):
@@ -242,6 +256,13 @@ class Battlefield(object): #this is the operating are for all the soldiers
         self.soldiersMap=dict() #positional map of soldier positions
         self.deadMap=dict()  #positional map of dead bodies
 
+        self.size=(np.array((params.battlefieldBounds[0][0],params.battlefieldBounds[1][0])),np.array(
+                            (params.battlefieldBounds[0][1]-params.battlefieldBounds[0][0],
+                             params.battlefieldBounds[1][1]-params.battlefieldBounds[1][0]))) #corner, and width/height
+
+        self.filepath=""
+        self.initNewBattle()
+
         self.__class__.main=self
 
     @classmethod
@@ -252,6 +273,7 @@ class Battlefield(object): #this is the operating are for all the soldiers
     def gridify(num):
         return int(num-num%params.gridSize)
 
+    #=============I'm actually going to change this to return slowness factor instead=======
     def countDeadBodies(self,coords): #count dead bodies at coords
         block=self.dead.get(self.getIndex(coords))
         if block is None:
@@ -262,6 +284,32 @@ class Battlefield(object): #this is the operating are for all the soldiers
                n+=1
 
         return n
+
+    def runFrame(self): #run one frame
+
+        britList=[]
+        sealList=[]
+        
+        for i in self.soldiersList:
+            if i.faction.id==1:
+                britList.append(i)
+            else:
+                sealList.append(i)
+
+        print("shooting")
+        for i in sealList:
+            i.shoot(random.choice(britList))
+
+        #clean
+        print("cleaning")
+        n=0
+        for i in tuple(self.soldiersList):
+            if i.hp<0:
+                n+=1
+                self.removeSoldier(i)
+        print(n,"killed")
+
+    #interface to add/remove soldiers/bodies from the map
 
     def addSoldierToMap(self,index,soldier): #add a soldier to the solder map grid
         if self.soldiersMap.get(index) is None:
@@ -275,8 +323,8 @@ class Battlefield(object): #this is the operating are for all the soldiers
             if sindex!=-1:
                 self.soldiersMap[index].pop(sindex)
 
-            if len(self.soldiersMap[index]==0): #remove the list from memory if it's empty
-                self.solderisMap[index]=None
+            if len(self.soldiersMap[index])==0: #remove the list from memory if it's empty
+                self.soldiersMap.__delitem__(index)
 
     def addSoldier(self,soldier): #add a new soldier to the battlefield
         self.soldiersList.append(soldier)
@@ -288,33 +336,89 @@ class Battlefield(object): #this is the operating are for all the soldiers
             self.soldiersList.pop(sindex)
         self.removeSoldierFromMap(self.getIndex(soldier.coords),soldier)
 
-class SEALFACTION(Faction):
-    id=0
+    #draw commands
 
-    enemy=[1]
+    def getImageCoords(self,coords): #convert 2d/3d real world coords to image pixel coords
+        return np.array((coords[:2]-self.size[0])/params.pixelDensity,dtype=np.int32)
 
-class BRITFACTION(Faction):
-    id=1
+    def max(self,color):
+        return [i+(i>255)*(255-i)+(i<0)*(-i) for i in color]      
 
-    enemy=[0]
+    def createImage(self): #return the surface of the battlefield picture
+        size=self.getImageCoords(self.size[1]+self.size[0])
+        surface=pygame.Surface(size)
+        surface.fill(params.backgroundColor)
+        s2=pygame.Surface(size)#the transparent surface
+        s2.set_colorkey((0,0,0))
+        #now draw the dead bodies
 
-def test():
-    Battlefield()
-    s=Soldier((0,0,0),SEALFACTION)
-    b=Soldier((40,40.2,0),BRITFACTION)
-    b2=Soldier((80,80.4,0),BRITFACTION)
-    s.weapon=Weapon
-    b.weapon=Weapon
-    for i in range(1000):
+        for i in self.deadList:
+            #surface.fill(i.color,(self.getImageCoords(i.coords),(2,2)))
+            pass
+
+        #now draw the soldiers
+        for i in self.soldiersList:
+            #surface.fill(i.color,(self.getImageCoords(i.coords),(2,2)))
+            c=self.getImageCoords(i.coords)
+            try:
+                surface.set_at(c,self.max(surface.get_at(c)[:3]+i.color))
+            except:
+                pass
+      
+        return surface
+
+    def saveFrame(self,frameNo): #generate the image and save it it to the filepath
+        pygame.image.save(self.createImage(),self.filepath+"/frames/"+str(frameNo).zfill(params.imageFrameZeros)+".png")
+
+    def initNewBattle(self):  
+        append=0
+        while os.path.exists("battles/"+params.battleName+bool(append)*(" ("+str(append)+")")):
+            append+=1
+        self.filepath="battles/"+params.battleName+bool(append)*(" ("+str(append)+")")
+        os.makedirs(self.filepath+"/frames")
+        
+    #initialization functions for setting up soldiers in different shapes
+
+    def initLine(self,soldier,number,start,direction,maxLength=2**31):
+        direction=np.array(direction)
+        for i in range(number):
+            soldier(start+((i*2*soldier.size[0])%maxLength)*direction+int((i*2*soldier.size[0])/maxLength)*np.cross(direction,Z))
+
+
+
+'''
+def foo(): #draw the frame and save to file
+    pygame.image.save(Battlefield.main.createImage(),"foo.png")
+
+params.initClasses(Weapon,Faction,Soldier)
+
+Battlefield()
+#for i in range(100):
+#    params.Seal([0,25-i/2,0])
+    
+Battlefield.main.initLine(params.Seal,100,[0,0,0],[0,1,0])
+Battlefield.main.initLine(params.Redcoat,300000,[500,0,0],[1,0,0],500)
+
+
+for x in range(10):
+    for y in range(10):
+        params.Redcoat([100+x/2,100+y/2,0])
+
+s=params.Seal([0,0,0])
+b=params.Redcoat([40,40.2,0])
+b2=params.Redcoat([80,80.4,0])
+for i in range(1000):
+    s.shoot(b)
+    s.update()
+print("TOTAL HITS:",b.timesHit)
+print("collats:",b2.timesHit)
+b.timesHit=0
+print("Now single tapping")
+for i in range(1):
+    if(i % 2 == 0):
         s.shoot(b)
-        s.update()
-    print("TOTAL HITS:",b.timesHit)
-    print("collats:",b2.timesHit)
-    b.timesHit=0
-    print("Now single tapping")
-    for i in range(1):
-        if(i % 2 == 0):
-            s.shoot(b)
-        s.update()
-    print("TOTAL HITS:",b.timesHit)
-test()
+    s.update()
+print("TOTAL HITS:",b.timesHit)
+'''
+#foo()
+
