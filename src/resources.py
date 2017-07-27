@@ -158,9 +158,9 @@ class Weapon(object): #base weapon class..make it static
             for coord in range(Battlefield.gridify(start[i]),Battlefield.gridify(start[i]+direction[i]*params.maxBulletDistance),
                                self.getSign(m)*params.gridSize):
                 fooIndex=Battlefield.getIndex(start+direction*(coord-start[i])/m)
-                if not grids.__contains__(fooIndex):
-                    hashes.append((coord-start[i])/m )
-                    grids.add(fooIndex)
+                #if True or not grids.__contains__(fooIndex):
+                hashes.append((coord-start[i])/m )
+                    #grids.add(fooIndex)
 
         hashes.sort()
         '''
@@ -181,7 +181,11 @@ class Weapon(object): #base weapon class..make it static
         multiKill=0 #track the number of people hit
         for t in hashes: #now visit each grid
 
-            t+=1e-5 #ensure it's inside the block
+            #t+=1e-5 #ensure it's inside the block
+
+            if grids.__contains__(Battlefield.main.getIndex(start+direction*t)):
+                next
+            grids.add(Battlefield.main.getIndex(start+direction*t))
 
             z=start[2]+direction[2]*t #the z height upon entering this block
             if not (params.minBulletHeight<=z<=params.maxBulletHeight) and t!= hashes[0]: #dont check backwards
