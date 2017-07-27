@@ -179,20 +179,21 @@ class Weapon(object): #base weapon class..make it static
 
 
         multiKill=0 #track the number of people hit
-        for t in hashes: #now visit each grid
+        for tIndex in range(len(hashes)-1): #now visit each grid
+            
+            t=(hashes[tIndex]+hashes[tIndex+1])/2 #ensure it's inside the block
 
-            #t+=1e-5 #ensure it's inside the block
-
-            if grids.__contains__(Battlefield.main.getIndex(start+direction*t)):
+            grindex=Battlefield.main.getIndex(start+direction*t) #the GRid INDEX but more fun to say 
+            if grids.__contains__(grindex):
                 next
-            grids.add(Battlefield.main.getIndex(start+direction*t))
+            grids.add(grindex)
 
             z=start[2]+direction[2]*t #the z height upon entering this block
             if not (params.minBulletHeight<=z<=params.maxBulletHeight) and t!= hashes[0]: #dont check backwards
                 break #exit the loop, forget the bullet
 
             #else check for collisions inside the grid box
-            gridBox=Battlefield.main.soldiersMap.get(Battlefield.main.getIndex(start+direction*t))
+            gridBox=Battlefield.main.soldiersMap.get(grindex)
             if gridBox: #if it's occupied
                 gridBox.sort(key=lambda soldier: np.linalg.norm(soldier.coords-start)) #sort the list from closest to furthest
                 for s in gridBox: #for each soldier inside
