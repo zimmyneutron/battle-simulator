@@ -5,7 +5,8 @@ import numpy as np
 import resources
 
 def initSoldiers(): #define here how you'd like to initialize both armies
-    resources.Battlefield.main.initLine(Seal,100,[0,0,0],[0,1,0])
+    resources.Battlefield.main.initLine(Seal,50,[0,0,0],[0,1,0])
+    resources.Battlefield.main.initLine(SealSniper,50,[-1,0,0],[0,1,0])
     resources.Battlefield.main.initLine(Redcoat,300000,[500,0,0],[1,0,0],500)
 
 class M240(resources.Weapon):
@@ -28,7 +29,7 @@ class M240(resources.Weapon):
     multiKillDamage=.18 #if it hits someone and deals at least this much damage, hit the next person and deal this much less damage
 
 class SniperRifle(resources.Weapon):
-    fireRate=1 #Hz
+    fireRate=3 #Hz
     height=np.array((0,0,.7)) #how high above the ground the gun is held
 
     inherentSpread=0.0001 #spread from where you're aiming (estimated from article)
@@ -36,7 +37,7 @@ class SniperRifle(resources.Weapon):
     recoilBase=.5 #how quickly the gun reaches its maximum recoil
 
     maxRange=5000 #don't try to shoot beyond this range
-    averageSpeed=1500 #this should be slightly slower than muzzle velocity
+    averageSpeed=800 #this should be slightly slower than muzzle velocity
                 #THIS DOESNT AFFECT DAMAGE AT ALL
 
     #damage stuff
@@ -67,15 +68,19 @@ class Musket(resources.Weapon):
 
 class SealFaction(resources.Faction):
     id=0
+    name="Seals"
 
     enemy=[1]
 
 
 class BritFaction(resources.Faction):
     id=1
+    name="Brits"
 
     enemy=[0]
 
+
+resources.Faction.factionList=[SealFaction,BritFaction]
 
 class Seal(resources.Soldier):
 
@@ -99,3 +104,4 @@ class Redcoat(resources.Soldier):
 
     def __init__(self,coords):
         super().__init__(coords,BritFaction)
+

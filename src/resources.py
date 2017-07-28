@@ -40,12 +40,18 @@ class Soldier(object): #any soldier
         self.recoil = 0
         self.timesHit=0
 
+        self.target=None #soldier who you're targeting until they die
+        self.lastShot=Battlefield.main.time
+
     def update(self):
         if(self.recoil != 0):
             self.recoil -= 1
 
     def findEnemy():
         pass
+
+    def canShoot(self): #check if you have a valid target and past cooldown time
+         return Battlefield.main.time-self.lastShot>=1/self.weapon.fireRate and self.weapon.np.linalg.norm(i.target.coords-i.coords)<i.weapon.maxRange
 
     def shoot(self, target):
         distanceDeviation = np.power(np.linalg.norm(target.coords-self.coords),1) * self.distanceacc
@@ -63,7 +69,7 @@ class Soldier(object): #any soldier
         
         displacementVector = (target.coords + target.weapon.height) - (self.coords + self.weapon.height) #initial aim vector
         gravityDeflection = np.array((0,0,params.gravitationalAcceleration/2*(np.linalg.norm(displacementVector)/self.weapon.averageSpeed)**2)) #how much the bullet is defelected by gravity
-        print(gravityDeflection)
+        #print(gravityDeflection)
         displacementVector -= gravityDeflection #shoot downward to mimic gravitational parabolic trajectory
         initialUnitVector = displacementVector / np.linalg.norm(displacementVector)
 
@@ -78,8 +84,24 @@ class Soldier(object): #any soldier
         self.weapon.shootAt(self.coords + self.weapon.height + gravityDeflection, aimUnitVector, self.faction) #also pass in your faction so you don't shoot an ally (or yourself)
 
         self.recoil += 2
+        self.lastShot=Battlefield.main.time
         if(self.recoil > self.maxRecoil):
             self.recoil = self.maxRecoil
+
+    def findTarget(self): #randomly select a target from the enemy faction
+        closest=None #closest target checked
+        cdist=float("inf") #distance to closest
+        for enemy in self.faction.enemy:
+            factionMap=Battlefield.main.factionMap.get(enemy)
+            if factionMap:
+                for i in range(params.targetSelectionIterations):
+                    check=random.choice(factionMap)
+                    dist=np.linalg.norm(self.coords-check.coords)
+                    if dist<cdist:
+                        closest=check
+                        cdist=dist
+        self.target=closest
+                    
 
     def inHitbox(self,offset2d): #check whether the 2d offset vector is inside your hitbox or not
         return offset2d[0]<=self.size[0] and offset2d[1]<=self.size[1] #that's all it should take because we're checking radius, not displacement
@@ -181,6 +203,7 @@ class Weapon(object): #base weapon class..make it static
 
         #for i in hashes:print(Battlefield.getIndex(start+direction*i))
 
+        targetHit=None
 
         multiKill=0 #track the number of people hit
         for tIndex in range(len(hashes)-1): #now visit each grid
@@ -213,13 +236,17 @@ class Weapon(object): #base weapon class..make it static
                         offset2d=(np.sqrt(offset3d[0]**2+offset3d[1]**2),offset3d[2])#the 2d offset of radius, height instead of x y z
                         #print(offset2d)
                         if s.inHitbox(offset2d): #if it hits the soldier
+                            targetHit=s.coords #update the soldier being hit to draw the bullet paths
                             damage=self.getDamage(np.linalg.norm(s.coords-start),multiKill) #calculate the damage, based on how many targets have already been hit by bullet
                             s.damage(damage) #deal damage to the soldier
                             if damage>self.multiKillDamage: #if it deals enough damage to hit another person
                                 multiKill+=self.multiKillDamage
                             else:
+                                if targetHit is not None:
+                                    Battlefield.main.bullets.append([start,targetHit])
                                 return None #exit the loop if it can't hit another person
-
+        if targetHit is not None:
+            Battlefield.main.bullets.append([start,targetHit])
 
 
     #def expDamage(maxDamage,dropOff,distance): #do damage that halves every dropOff, with maxDamage at a range of 0 meters
@@ -232,8 +259,11 @@ class Weapon(object): #base weapon class..make it static
 class Faction(object): #basically a number telling you which side you're on..not much to it
 
     id=-1 #give it an id number
+    name=""
     ally=[] #list of allied factions
     enemy=[] #list of enemy factions
+
+    factionList=[] #list of all faction classes
 
     @classmethod
     def isEnemyFaction(self,fac):
@@ -270,9 +300,15 @@ class Battlefield(object): #this is the operating are for all the soldiers
         self.deadMap=dict()  #positional map of dead bodies
         self.factionMap=dict() #this lets you access a list of soldiers sorted by faction
 
+        self.bullets=[] # a list of the bullets being fired on the screen (start, end coords)
+
+        self.time=0 #simulation time
+
         self.size=(np.array((params.battlefieldBounds[0][0],params.battlefieldBounds[1][0])),np.array(
                             (params.battlefieldBounds[0][1]-params.battlefieldBounds[0][0],
                              params.battlefieldBounds[1][1]-params.battlefieldBounds[1][0]))) #corner, and width/height
+
+        self.font=pygame.font.SysFont("courier new",12)
 
         self.filepath=""
         self.initNewBattle()
@@ -300,7 +336,7 @@ class Battlefield(object): #this is the operating are for all the soldiers
         return n
 
     def runFrame(self): #run one frame
-
+        '''
         britList=[]
         sealList=[]
         
@@ -309,10 +345,14 @@ class Battlefield(object): #this is the operating are for all the soldiers
                 britList.append(i)
             else:
                 sealList.append(i)
-
+'''
+        self.bullets=[] #clear the bullets list
         print("shooting")
-        for i in sealList:
-            i.shoot(random.choice(britList))
+        for i in self.soldiersList:
+            if i.target is None or i.target.hp<0: #change this to i.target.dead eventually
+                i.findTarget()
+            if i.canShoot():
+                i.shoot(i.target)
 
         #clean
         print("cleaning")
@@ -322,6 +362,7 @@ class Battlefield(object): #this is the operating are for all the soldiers
                 n+=1
                 self.removeSoldier(i)
         print(n,"killed")
+        self.time+=1/params.simulationFramerate
 
     #interface to add/remove soldiers/bodies from the map
 
@@ -354,7 +395,7 @@ class Battlefield(object): #this is the operating are for all the soldiers
         if sindex!=-1:
             self.soldiersList.pop(sindex)
         self.removeSoldierFromMap(self.getIndex(soldier.coords),soldier)
-        factionList=self.factionMap.get(soldier.faciton.id)
+        factionList=self.factionMap.get(soldier.faction.id)
         if factionList is not None:
             sindex=factionList.index(soldier)
             if sindex!=-1:
@@ -383,7 +424,7 @@ class Battlefield(object): #this is the operating are for all the soldiers
             else:
                 s2[c]+=i.color
                 n+=1
-        print(len(self.soldiersList),len(s2),n)
+        
         #now add in the pixel dictionary
         for coords, value in s2.items():
             try:
@@ -391,6 +432,22 @@ class Battlefield(object): #this is the operating are for all the soldiers
             except:#Exception as e:
                 pass
 
+        if params.bulletColor is not None:
+            for i in self.bullets: #draw on the bullet lines
+                pygame.draw.aaline(surface,params.bulletColor,self.getImageCoords(i[0]),self.getImageCoords(i[1]))
+
+        #now draw status box in upper right corner
+        factionsText=[self.font.render("%s: %i"%(i.name,len(self.factionMap[i.id])),True,(0,0,0)) for i in Faction.factionList]
+
+        width=max(factionsText,key=lambda text: text.get_width()).get_width()
+
+        pygame.draw.rect(surface,(255,255,255),((surface.get_width()-width-8,0),(width+8,len(factionsText)*factionsText[0].get_height())))
+        pygame.draw.lines(surface,(0,0,0),True,[[surface.get_width()-1,0],[surface.get_width()-1,len(factionsText)*factionsText[0].get_height()],
+                                             [surface.get_width()-width-8,len(factionsText)*factionsText[0].get_height()],
+                                             [surface.get_width()-width-8,0]])
+        for i in range(len(factionsText)):
+            surface.blit(factionsText[i],(surface.get_width()-width-4,i*factionsText[i].get_height()+1))
+        
         '''
         s2=pygame.Surface(size)#the transparent surface
         s2.set_colorkey((0,0,0))
