@@ -9,6 +9,6 @@ battlefield=resources.Battlefield() #initialize the battlefield
 custom.initSoldiers() #load up the soldiers as defined in custom.py
 
 battlefield.saveFrame(0)
-for i in range(1,10):
+for i in range(1,50):
     battlefield.runFrame()
     battlefield.saveFrame(i)

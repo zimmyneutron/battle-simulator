@@ -23,7 +23,7 @@ class M240(resources.Weapon):
     maxDamage=.4 #damage when you're standing right in front of the gun
     minDamage=.15 #damage when the gun is beyond its max range... ie at terminal velocity
     dropOff=1500 #every x meters, the damage done by the gun is halved
-    multiKillDamage=0#.18 #if it hits someone and deals at least this much damage, hit the next person and deal this much less damage
+    multiKillDamage=.18 #if it hits someone and deals at least this much damage, hit the next person and deal this much less damage
 
 
 class Musket(resources.Weapon):
@@ -68,7 +68,7 @@ class Redcoat(resources.Soldier):
     
     weapon=Musket
     color=np.array((255,-3,-3),dtype=np.int32)*5/255
-    health=.1
+    #health=.1
 
     def __init__(self,coords):
         super().__init__(coords,BritFaction)

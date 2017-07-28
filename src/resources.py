@@ -353,6 +353,26 @@ class Battlefield(object): #this is the operating are for all the soldiers
         size=self.getImageCoords(self.size[1]+self.size[0])
         surface=pygame.Surface(size)
         surface.fill(params.backgroundColor)
+
+        s2=dict() #make it a dictionary of pixel colors
+        n=0
+        for i in self.soldiersList:
+            c=tuple(self.getImageCoords(i.coords))
+            pixel=s2.get(c)
+            if pixel is None:
+                s2[c]=np.array(i.color) #make sure its a new object
+            else:
+                s2[c]+=i.color
+                n+=1
+        print(len(self.soldiersList),len(s2),n)
+        #now add in the pixel dictionary
+        for coords, value in s2.items():
+            try:
+                surface.set_at(coords,self.max(surface.get_at(coords)[:3]+value))
+            except:#Exception as e:
+                pass
+
+        '''
         s2=pygame.Surface(size)#the transparent surface
         s2.set_colorkey((0,0,0))
         #now draw the dead bodies
@@ -369,6 +389,7 @@ class Battlefield(object): #this is the operating are for all the soldiers
                 surface.set_at(c,self.max(surface.get_at(c)[:3]+i.color))
             except:
                 pass
+                '''
       
         return surface
 
