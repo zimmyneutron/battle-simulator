@@ -60,8 +60,11 @@ class Soldier(object): #any soldier
         rTheta = np.random.uniform(0, 2 * np.pi)
 
         #now calculate the vectors
-
+        
         displacementVector = (target.coords + target.weapon.height) - (self.coords + self.weapon.height) #initial aim vector
+        gravityDeflection = np.array((0,0,params.gravitationalAcceleration/2*(np.linalg.norm(displacementVector)/self.weapon.averageSpeed)**2)) #how much the bullet is defelected by gravity
+        print(gravityDeflection)
+        displacementVector -= gravityDeflection #shoot downward to mimic gravitational parabolic trajectory
         initialUnitVector = displacementVector / np.linalg.norm(displacementVector)
 
         azimuth=np.arctan2(initialUnitVector[1],initialUnitVector[0])+np.pi/2 #the x,y angle of the initialUnitVector vector
@@ -72,7 +75,7 @@ class Soldier(object): #any soldier
         aimUnitVector = aimVector / np.linalg.norm(aimVector)
 
         #print(aimUnitVector)
-        self.weapon.shootAt(self.coords + self.weapon.height, aimUnitVector, self.faction) #also pass in your faction so you don't shoot an ally (or yourself)
+        self.weapon.shootAt(self.coords + self.weapon.height + gravityDeflection, aimUnitVector, self.faction) #also pass in your faction so you don't shoot an ally (or yourself)
 
         self.recoil += 2
         if(self.recoil > self.maxRecoil):
@@ -116,6 +119,7 @@ class Weapon(object): #base weapon class..make it static
     recoilBase=.5 #how quickly the gun reaches its maximum recoil
 
     maxRange=0 #don't try to shoot beyond this range
+    averageSpeed=0 #how fast the bullet travels "on average"... i'm thinkning make it like 80% of the muzzle velocity or something?
 
     #damage stuff
     falloffBuffer=0 #this determines how long bullet will go before starting falloff
@@ -155,7 +159,7 @@ class Weapon(object): #base weapon class..make it static
         grids=set()
         for i in range(2):
             m=(direction[i])#*params.maxBulletDistance/params.gridSize)
-            for coord in range(Battlefield.gridify(start[i]),Battlefield.gridify(start[i]+direction[i]*params.maxBulletDistance),
+            for coord in range(Battlefield.gridify(start[i]),Battlefield.gridify(start[i]+direction[i]*self.maxRange),
                                self.getSign(m)*params.gridSize):
                 fooIndex=Battlefield.getIndex(start+direction*(coord-start[i])/m)
                 #if True or not grids.__contains__(fooIndex):
@@ -188,9 +192,13 @@ class Weapon(object): #base weapon class..make it static
                 next
             grids.add(grindex)
 
-            z=start[2]+direction[2]*t #the z height upon entering this block
-            if not (params.minBulletHeight<=z<=params.maxBulletHeight) and t!= hashes[0]: #dont check backwards
-                break #exit the loop, forget the bullet
+            #z=start[2]+direction[2]*t #the z height upon entering this block
+            if start[2]+direction[2]*hashes[tIndex]<params.minBulletHeight:
+                break #the bullet hit the ground, stop simulating
+            elif start[2]+direction[2]*hashes[tIndex+1]>params.maxBulletHeight:
+                continue #the bullet is above people's heads, don't bother checking this square
+            #if not (params.minBulletHeight<=z<=params.maxBulletHeight) and t!= hashes[0]: #dont check backwards
+                #break #exit the loop, forget the bullet
 
             #else check for collisions inside the grid box
             gridBox=Battlefield.main.soldiersMap.get(grindex)
@@ -260,6 +268,7 @@ class Battlefield(object): #this is the operating are for all the soldiers
         self.deadList=list() #list of bodies for looping
         self.soldiersMap=dict() #positional map of soldier positions
         self.deadMap=dict()  #positional map of dead bodies
+        self.factionMap=dict() #this lets you access a list of soldiers sorted by faction
 
         self.size=(np.array((params.battlefieldBounds[0][0],params.battlefieldBounds[1][0])),np.array(
                             (params.battlefieldBounds[0][1]-params.battlefieldBounds[0][0],
@@ -334,12 +343,22 @@ class Battlefield(object): #this is the operating are for all the soldiers
     def addSoldier(self,soldier): #add a new soldier to the battlefield
         self.soldiersList.append(soldier)
         self.addSoldierToMap(self.getIndex(soldier.coords),soldier)
+        factionList=self.factionMap.get(soldier.faction.id)
+        if factionList is None:
+            self.factionMap[soldier.faction.id]=[soldier]
+        else:
+            factionList.append(soldier)
 
     def removeSoldier(self,soldier): #remove the soldier when they distance
         sindex=self.soldiersList.index(soldier)
         if sindex!=-1:
             self.soldiersList.pop(sindex)
         self.removeSoldierFromMap(self.getIndex(soldier.coords),soldier)
+        factionList=self.factionMap.get(soldier.faciton.id)
+        if factionList is not None:
+            sindex=factionList.index(soldier)
+            if sindex!=-1:
+                factionList.pop(sindex)
 
     #draw commands
 

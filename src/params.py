@@ -16,3 +16,4 @@ maxBulletHeight=1.6 #meters height before giving up
 minBulletHeight=0 #meters height before hitting the ground
 imageFrameZeros=8 #how many digits should be saved for image numbers
 simulationFramerate=16 #how many simulation frames occur each second
+gravitationalAcceleration=9.8

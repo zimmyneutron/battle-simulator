@@ -13,10 +13,12 @@ class M240(resources.Weapon):
     height=np.array((0,0,.7)) #how high above the ground the gun is held
 
     inherentSpread=0.00125 #spread from where you're aiming (estimated from article)
-    recoilSpread=0.005 #the maximum recoil attained by a gun as you fire endlessly
+    recoilSpread=0.002 #the maximum recoil attained by a gun as you fire endlessly
     recoilBase=.5 #how quickly the gun reaches its maximum recoil
 
     maxRange=2000 #don't try to shoot beyond this range
+    averageSpeed=650 #this should be slightly slower than muzzle velocity
+                #THIS DOESNT AFFECT DAMAGE AT ALL
 
     #damage stuff
     falloffBuffer=.5 #this determines how long bullet will go before starting falloff
@@ -24,6 +26,25 @@ class M240(resources.Weapon):
     minDamage=.15 #damage when the gun is beyond its max range... ie at terminal velocity
     dropOff=1500 #every x meters, the damage done by the gun is halved
     multiKillDamage=.18 #if it hits someone and deals at least this much damage, hit the next person and deal this much less damage
+
+class SniperRifle(resources.Weapon):
+    fireRate=1 #Hz
+    height=np.array((0,0,.7)) #how high above the ground the gun is held
+
+    inherentSpread=0.0001 #spread from where you're aiming (estimated from article)
+    recoilSpread=0#0.005 #the maximum recoil attained by a gun as you fire endlessly
+    recoilBase=.5 #how quickly the gun reaches its maximum recoil
+
+    maxRange=5000 #don't try to shoot beyond this range
+    averageSpeed=1500 #this should be slightly slower than muzzle velocity
+                #THIS DOESNT AFFECT DAMAGE AT ALL
+
+    #damage stuff
+    falloffBuffer=2 #this determines how long bullet will go before starting falloff
+    maxDamage=2 #damage when you're standing right in front of the gun
+    minDamage=.5 #damage when the gun is beyond its max range... ie at terminal velocity
+    dropOff=1500 #every x meters, the damage done by the gun is halved
+    multiKillDamage=.2 #if it hits someone and deals at least this much damage, hit the next person and deal this much less damage
 
 
 class Musket(resources.Weapon):
@@ -35,6 +56,7 @@ class Musket(resources.Weapon):
     recoilBase=.5 #does nothing when recoilSpread is 0
 
     maxRange=120 #i think this is what david said was the max range?
+    averageSpeed=200
 
     falloffBuffer=1.2
     maxDamage=1
@@ -62,6 +84,11 @@ class Seal(resources.Soldier):
 
     def __init__(self,coords):
         super().__init__(coords,SealFaction)
+
+class SealSniper(Seal):
+
+    weapon=SniperRifle
+    distanceacc=0
 
 
 class Redcoat(resources.Soldier):
